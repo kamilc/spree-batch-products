@@ -22,7 +22,7 @@ There are a number of different branches corresponding to different Spree versio
 
 Follow it up with a `bundle install`.
 
-When your bundle has finished, mirror the assets and migrations into your migrations folder with `rake spree_batch_products:install` and then run `rake db:migrate`.  This will create the ProductDatasheet(s) model and database table along with the handy statistic fields listed above.
+When your bundle has finished, mirror the assets and migrations into your migrations folder with `rails generate spree_batch_products:install` and then it will prompt to run the migrations, or you can run them later with `rake db:migrate`.  This will create the ProductDatasheet(s) model and database table along with the handy statistic fields listed above.
 
 If you are using DelayedJob, the Jobs table should already be created, or it will be created when you install DelayedJob.
 
