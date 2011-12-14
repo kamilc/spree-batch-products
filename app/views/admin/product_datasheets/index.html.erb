@@ -46,3 +46,11 @@
   </tr>
 <% end %>  
 </table>
+
+<%= javascript_tag do %>
+  $(document).ready(function() {
+    $("li#new_product_datasheet_link > a").live("ajax:success", function(xhr, data, status) {
+      $("#new_product_datasheet").html(data);
+    });
+  });
+<% end %>
