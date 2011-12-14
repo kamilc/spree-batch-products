@@ -35,7 +35,6 @@ class Admin::ProductDatasheetsController < Admin::BaseController
   
   def collection
     return @collection if @collection
-    
   end
   
   def create
