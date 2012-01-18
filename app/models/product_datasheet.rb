@@ -41,7 +41,7 @@ class ProductDatasheet < ActiveRecord::Base
     headers = []
     
     header_row.each do |key|
-      if Product.column_names.include?(key) or Variant.column_names.include?(key)
+      if Product.column_names.include?(key) or Variant.column_names.include?(key) or key == "taxons"
         headers << key
       else
         headers << nil
@@ -83,9 +83,38 @@ class ProductDatasheet < ActiveRecord::Base
     end
     self.update_attribute(:processed_at, Time.now)
   end
+
+  # [Taxon] | nil
+  def get_taxons!(attr_hash)
+    if attr_hash[:taxons].nil?
+      return nil
+    else
+      taxon_names = attr_hash[:taxons].humanize.split(";").map(&:strip)
+      return taxon_names.map do |name|
+        taxon = Taxon.where({:name => name}).first
+        if taxon.nil?
+          taxon = get_categories_taxonomy.taxons.build(:name => name)
+          taxon.save
+        end
+        taxon
+      end
+    end
+  end
+
+  # Taxonomy
+  def get_categories_taxonomy
+    name = Spree::Config[:categories_taxonomy] || "Kategorie"
+    taxonomy = Taxonomy.where({:name => name}).first
+    if taxonomy.nil?
+      taxonomy = Taxonomy.create({:name => dupa})
+    end
+    return taxonomy
+  end
   
   def create_product(attr_hash)
+    taxons = get_taxons!(attr_hash)
     new_product = Product.new(attr_hash)
+    new_product.taxons = taxons unless taxons.nil?
     @queries_failed = @queries_failed + 1 if not new_product.save
   end
   
@@ -101,12 +130,15 @@ class ProductDatasheet < ActiveRecord::Base
   def update_products(key, value, attr_hash)
     products_to_update = Product.where(key => value).all
     @records_matched = @records_matched + products_to_update.size
-    products_to_update.each { |product| 
-                                        if product.update_attributes attr_hash 
-                                          @records_updated = @records_updated + 1
-                                        else
-                                          @records_failed = @records_failed + 1
-                                        end }
+    products_to_update.each do |product|
+      taxons = get_taxons!(attr_hash)
+      product.taxons = taxons unless taxons.nil?
+      if product.save && product.update_attributes attr_hash 
+        @records_updated = @records_updated + 1
+      else
+        @records_failed = @records_failed + 1
+      end 
+    end
     @queries_failed = @queries_failed + 1 if products_to_update.size == 0
   end
   
