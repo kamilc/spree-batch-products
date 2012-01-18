@@ -1,5 +1,6 @@
 class ProductDatasheet < ActiveRecord::Base
   require 'spreadsheet'
+  require 'iconv'
   
   attr_accessor :queries_failed, :records_failed, :records_matched, :records_updated
   
@@ -86,14 +87,16 @@ class ProductDatasheet < ActiveRecord::Base
 
   # [Taxon] | nil
   def get_taxons!(attr_hash)
-    if attr_hash[:taxons].nil?
+    if attr_hash["taxons"].nil?
       return nil
     else
-      taxon_names = attr_hash[:taxons].humanize.split(";").map(&:strip)
+      taxon_names = attr_hash["taxons"].humanize.split(";").map(&:strip)
+      attr_hash.delete("taxons")
       return taxon_names.map do |name|
         taxon = Taxon.where({:name => name}).first
         if taxon.nil?
-          taxon = get_categories_taxonomy.taxons.build(:name => name)
+          taxon = get_categories_taxonomy.root.children.build(:name => name, :taxonomy_id => get_categories_taxonomy.id,
+            :permalink => (Iconv.new('US-ASCII//TRANSLIT', 'utf-8').iconv name).gsub(/[^\w]|[\_]/,' ').split.join('-').downcase)
           taxon.save
         end
         taxon
@@ -101,19 +104,23 @@ class ProductDatasheet < ActiveRecord::Base
     end
   end
 
-  # Taxonomy
+  # Taxon
   def get_categories_taxonomy
     name = Spree::Config[:categories_taxonomy] || "Kategorie"
     taxonomy = Taxonomy.where({:name => name}).first
     if taxonomy.nil?
-      taxonomy = Taxonomy.create({:name => dupa})
+      taxonomy = Taxonomy.create({:name => name})
+      taxonomy.root = Taxon.create({:name => name, :taxonomy_id => taxonomy.id})
+      taxonomy.save
     end
     return taxonomy
   end
   
   def create_product(attr_hash)
+    attr_hash["sku"] = attr_hash["sku"].split(".").first unless attr_hash["sku"].nil?
     taxons = get_taxons!(attr_hash)
     new_product = Product.new(attr_hash)
+    new_product.permalink = (Iconv.new('US-ASCII//TRANSLIT', 'utf-8').iconv attr_hash["name"]).gsub(/[^\w]|[\_]/,' ').split.join('-').downcase if new_product.permalink.nil?
     new_product.taxons = taxons unless taxons.nil?
     @queries_failed = @queries_failed + 1 if not new_product.save
   end
@@ -130,10 +137,10 @@ class ProductDatasheet < ActiveRecord::Base
   def update_products(key, value, attr_hash)
     products_to_update = Product.where(key => value).all
     @records_matched = @records_matched + products_to_update.size
+    taxons = get_taxons!(attr_hash)
     products_to_update.each do |product|
-      taxons = get_taxons!(attr_hash)
       product.taxons = taxons unless taxons.nil?
-      if product.save && product.update_attributes attr_hash 
+      if product.save && (product.update_attributes attr_hash )
         @records_updated = @records_updated + 1
       else
         @records_failed = @records_failed + 1
