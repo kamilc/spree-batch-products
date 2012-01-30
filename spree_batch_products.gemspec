@@ -18,4 +18,5 @@ Gem::Specification.new do |s|
 
   s.add_dependency('spree_core', '>= 0.70.0')
   s.add_dependency('spreadsheet', '>= 0.6.5.4')
+  s.add_dependency('unicode_utils', '~> 1.2.2')
 end

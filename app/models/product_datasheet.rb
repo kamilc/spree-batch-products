@@ -1,3 +1,5 @@
+require "unicode_utils/downcase"
+
 class ProductDatasheet < ActiveRecord::Base
   require 'spreadsheet'
   require 'iconv'
@@ -90,7 +92,7 @@ class ProductDatasheet < ActiveRecord::Base
     if attr_hash["taxons"].nil?
       return nil
     else
-      taxon_names = attr_hash["taxons"].humanize.split(";").map(&:strip)
+      taxon_names = UnicodeUtils.downcase(attr_hash["taxons"]).humanize.split(";").map(&:strip)
       attr_hash.delete("taxons")
       return taxon_names.map do |name|
         taxon = Taxon.where({:name => name}).first
@@ -110,6 +112,7 @@ class ProductDatasheet < ActiveRecord::Base
     taxonomy = Taxonomy.where({:name => name}).first
     if taxonomy.nil?
       taxonomy = Taxonomy.create({:name => name})
+      taxonomy.save
       taxonomy.root = Taxon.create({:name => name, :taxonomy_id => taxonomy.id})
       taxonomy.save
     end
