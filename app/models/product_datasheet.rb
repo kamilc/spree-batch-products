@@ -92,7 +92,7 @@ class ProductDatasheet < ActiveRecord::Base
     if attr_hash["taxons"].nil?
       return nil
     else
-      binding.pry
+      # binding.pry
       taxon_names = attr_hash["taxons"].split(";").map(&:strip).map { |t| UnicodeUtils.downcase(t).humanize }
       attr_hash.delete("taxons")
       return taxon_names.map do |name|
